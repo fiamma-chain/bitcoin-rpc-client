@@ -78,7 +78,7 @@ impl BitcoinRpcClient {
     ) -> Result<ScanTxOutResult> {
         let desc = format!("tr({})", x_only_pubkey);
         let request = json::ScanTxOutRequest::Single(desc);
-        self.client.scan_tx_out_set_blocking(&vec![request])
+        self.client.scan_tx_out_set_blocking(&[request])
     }
 
     pub fn generate_to_address(
