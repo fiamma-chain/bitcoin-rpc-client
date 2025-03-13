@@ -1,6 +1,10 @@
-use bitcoin::Address;
-pub use bitcoincore_rpc::json::{GetRawTransactionResult, ListUnspentResultEntry};
-use bitcoincore_rpc::{Auth, Client, Result, RpcApi};
+use bitcoin::address::NetworkChecked;
+use bitcoin::{Address, Amount, XOnlyPublicKey};
+use bitcoincore_rpc::json::ScanTxOutResult;
+pub use bitcoincore_rpc::json::{
+    GetBlockHeaderResult, GetRawTransactionResult, ListUnspentResultEntry,
+};
+use bitcoincore_rpc::{json, Auth, Client, Result, RpcApi};
 
 #[derive(Debug)]
 pub struct BitcoinRpcClient {
@@ -36,11 +40,63 @@ impl BitcoinRpcClient {
         min_confirmation: Option<usize>,
     ) -> Result<Vec<ListUnspentResultEntry>> {
         self.client
-            .list_unspent(min_confirmation, None, Some(&[&address]), Some(true), None)
+            .list_unspent(min_confirmation, None, Some(&[address]), Some(true), None)
     }
 
     pub fn get_block(&self, block_hash: &bitcoin::BlockHash) -> Result<bitcoin::Block> {
         self.client.get_block(block_hash)
+    }
+
+    pub fn get_block_header_info(
+        &self,
+        block_hash: &bitcoin::BlockHash,
+    ) -> Result<GetBlockHeaderResult> {
+        self.client.get_block_header_info(block_hash)
+    }
+
+    pub fn get_block_midian_time(&self, height: u64) -> Result<u64> {
+        let fields = vec![json::BlockStatsFields::MedianTime];
+        let block_header_info = self.client.get_block_stats_fields(height, &fields)?;
+
+        if block_header_info.median_time.is_none() {
+            return Err(bitcoincore_rpc::Error::ReturnedError(format!(
+                "get_block_midian_time failed, where block_num is {}",
+                height
+            )));
+        }
+        let midian_time = block_header_info.median_time.unwrap();
+        Ok(midian_time)
+    }
+    pub fn get_best_block_midian_time(&self) -> Result<u64> {
+        let block = self.get_block_count()?;
+        self.get_block_midian_time(block)
+    }
+
+    pub fn scan_tx_out_set_blocking(
+        &self,
+        x_only_pubkey: &XOnlyPublicKey,
+    ) -> Result<ScanTxOutResult> {
+        let desc = format!("tr({})", x_only_pubkey);
+        let request = json::ScanTxOutRequest::Single(desc);
+        self.client.scan_tx_out_set_blocking(&[request])
+    }
+
+    pub fn generate_to_address(
+        &self,
+        block_num: u64,
+        address: &Address<NetworkChecked>,
+    ) -> Result<Vec<bitcoin::BlockHash>> {
+        assert!(block_num > 0);
+        self.client.generate_to_address(block_num, address)
+    }
+
+    pub fn send_to_address(
+        &self,
+        address: &Address<NetworkChecked>,
+        amount: Amount,
+    ) -> Result<bitcoin::Txid> {
+        self.client
+            .send_to_address(address, amount, None, None, None, None, None, None)
     }
 }
 
