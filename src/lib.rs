@@ -98,6 +98,10 @@ impl BitcoinRpcClient {
         self.client
             .send_to_address(address, amount, None, None, None, None, None, None)
     }
+
+    pub fn get_blockhash_by_height(&self, height: u64) -> Result<bitcoin::BlockHash> {
+        self.client.get_block_hash(height)
+    }
 }
 
 #[cfg(test)]
