@@ -4,7 +4,7 @@ use bitcoincore_rpc::bitcoincore_rpc_json::ScanTxOutResult;
 use bitcoincore_rpc::json::{
     GetBlockHeaderResult, GetRawTransactionResult, ListUnspentResultEntry,
 };
-use bitcoincore_rpc::{json, Auth, Client, RpcApi};
+use bitcoincore_rpc::{json, Auth, Client, Result, RpcApi};
 
 #[derive(Debug)]
 pub struct BitcoinRpcClient {
@@ -103,6 +103,10 @@ impl BitcoinRpcClient {
     ) -> bitcoincore_rpc::Result<bitcoin::Txid> {
         self.client
             .send_to_address(address, amount, None, None, None, None, None, None)
+    }
+
+    pub fn get_blockhash_by_height(&self, height: u64) -> Result<bitcoin::BlockHash> {
+        self.client.get_block_hash(height)
     }
 }
 
