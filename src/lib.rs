@@ -1,7 +1,7 @@
 #![allow(unused)]
 pub mod accounts;
-mod keys;
-mod param;
+pub mod keys;
+pub mod param;
 mod rpc;
 pub mod utils;
 
