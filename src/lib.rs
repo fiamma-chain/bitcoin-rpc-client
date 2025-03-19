@@ -1,8 +1,8 @@
 #![allow(unused)]
 pub mod accounts;
-pub mod dev;
 mod keys;
 mod param;
 mod rpc;
+pub mod utils;
 
 pub use rpc::*;
