@@ -5,5 +5,5 @@ pub mod param;
 mod rpc;
 pub mod utils;
 
-pub use bitcoincore_rpc::json;
+pub use bitcoincore_rpc::json::*;
 pub use rpc::*;
