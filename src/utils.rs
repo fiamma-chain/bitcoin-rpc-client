@@ -1,8 +1,11 @@
 use crate::accounts::{miner_address, operator_address};
+use crate::keys::p2tr_address_from_public_key;
 use crate::param::ProviderParams;
 use crate::BitcoinRpcClient;
 use bitcoin::consensus::encode;
-use bitcoin::{Address, Amount, Network, Transaction};
+use bitcoin::{Address, Amount, Network, PublicKey, Transaction, XOnlyPublicKey};
+use bitcoincore_rpc::bitcoincore_rpc_json::Utxo;
+use std::str::FromStr;
 
 impl BitcoinRpcClient {
     pub fn gen_regtest_block(&self) -> anyhow::Result<()> {
@@ -25,19 +28,49 @@ impl BitcoinRpcClient {
         println!("Successfully broadcast tx, txid: {:?}", txid);
     }
 
-    pub fn send_to_operator_address(&self, amount: Amount) {
-        let operator_addr = operator_address();
-        let min_amount = Amount::from_btc(0.1).unwrap();
-        let min_amount = if amount > min_amount {
-            amount
-        } else {
-            min_amount
-        };
-
-        for _ in 0..20 {
-            let _txid = self.send_to_address(&operator_addr, min_amount).unwrap();
+    pub fn send_to_utxo_to_address(&self, address: &Address, amount: Amount, utxo_num: usize) {
+        for _ in 0..utxo_num {
+            let _txid = self.send_to_address(address, amount).unwrap();
         }
         self.gen_regtest_block().unwrap();
+    }
+
+    pub fn select_utxo(
+        &self,
+        public_key: &PublicKey,
+        target_amount: Amount,
+        network: Network,
+    ) -> anyhow::Result<Utxo> {
+        let address = p2tr_address_from_public_key(*public_key, network);
+
+        println!("address: {:?}", address.to_string());
+        let unspent_utxo = {
+            let x_operator_pubkey: XOnlyPublicKey = (*public_key).into();
+            let tx_out_set = self.scan_tx_out_set_blocking(&x_operator_pubkey)?;
+            tx_out_set.unspents
+        };
+        println!("unspend_utxos: len {:?}", unspent_utxo.len());
+        if unspent_utxo.is_empty() {
+            self.send_to_utxo_to_address(&address, target_amount, 10);
+            anyhow::bail!(
+                "no utxo avaliable, auto send 20*0.1BTC utxos to it, please rerun, addr: {}",
+                address
+            );
+        }
+        let avaliable_utxo = unspent_utxo
+            .into_iter()
+            .filter(|utxo| utxo.amount >= target_amount)
+            .collect::<Vec<_>>();
+        if avaliable_utxo.is_empty() {
+            self.send_to_utxo_to_address(&address, target_amount, 10);
+            anyhow::bail!(
+                "no utxo amount >={}BTC,please retry, addr: {}, ",
+                target_amount.to_btc(),
+                address
+            );
+        }
+
+        Ok(avaliable_utxo.first().unwrap().clone())
     }
 }
 
