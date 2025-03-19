@@ -28,7 +28,7 @@ impl BitcoinRpcClient {
         println!("Successfully broadcast tx, txid: {:?}", txid);
     }
 
-    pub fn send_to_utxo_to_address(&self, address: &Address, amount: Amount, utxo_num: usize) {
+    pub fn send_utxo_to_address(&self, address: &Address, amount: Amount, utxo_num: usize) {
         for _ in 0..utxo_num {
             let _txid = self.send_to_address(address, amount).unwrap();
         }
@@ -51,7 +51,7 @@ impl BitcoinRpcClient {
         };
         println!("unspend_utxos: len {:?}", unspent_utxo.len());
         if unspent_utxo.is_empty() {
-            self.send_to_utxo_to_address(&address, target_amount, 10);
+            self.send_utxo_to_address(&address, target_amount, 10);
             anyhow::bail!(
                 "no utxo avaliable, auto send 20*0.1BTC utxos to it, please rerun, addr: {}",
                 address
@@ -62,7 +62,7 @@ impl BitcoinRpcClient {
             .filter(|utxo| utxo.amount >= target_amount)
             .collect::<Vec<_>>();
         if avaliable_utxo.is_empty() {
-            self.send_to_utxo_to_address(&address, target_amount, 10);
+            self.send_utxo_to_address(&address, target_amount, 10);
             anyhow::bail!(
                 "no utxo amount >={}BTC,please retry, addr: {}, ",
                 target_amount.to_btc(),
