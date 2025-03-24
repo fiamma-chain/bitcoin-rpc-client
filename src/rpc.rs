@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use bitcoin::address::NetworkChecked;
 use bitcoin::{Address, Amount, XOnlyPublicKey};
 use bitcoincore_rpc::bitcoincore_rpc_json::ScanTxOutResult;
@@ -51,6 +52,13 @@ impl BitcoinRpcClient {
         block_hash: &bitcoin::BlockHash,
     ) -> bitcoincore_rpc::Result<bitcoin::Block> {
         self.client.get_block(block_hash)
+    }
+
+    pub fn get_block_height(&self, block_hash: &bitcoin::BlockHash) -> anyhow::Result<u64> {
+        let block = self.client.get_block(block_hash)?;
+        block
+            .bip34_block_height()
+            .map_err(|e| anyhow!("failed to get_block_height {}", e.to_string()))
     }
 
     pub fn get_block_header_info(
