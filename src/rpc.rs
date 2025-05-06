@@ -14,7 +14,7 @@ pub struct BitcoinRpcClient {
 
 impl BitcoinRpcClient {
     pub fn new(url: &str, user: &str, password: &str) -> bitcoincore_rpc::Result<Self> {
-        let client = Client::new(url, Auth::UserPass(user.to_string(), password.to_string()))?;
+        let client = Client::new_with_minreq(url, Auth::UserPass(user.to_string(), password.to_string()))?;
         Ok(Self { client })
     }
 
