@@ -4,7 +4,7 @@ use bitcoincore_rpc::bitcoincore_rpc_json::ScanTxOutResult;
 use bitcoincore_rpc::json::{
     GetBlockHeaderResult, GetRawTransactionResult, ListUnspentResultEntry,
 };
-use bitcoincore_rpc::{json, Auth, Client, Result, RpcApi};
+use bitcoincore_rpc::{json, Auth, Client, Error, Result, RpcApi};
 
 #[derive(Debug)]
 pub struct BitcoinRpcClient {
@@ -18,6 +18,31 @@ impl BitcoinRpcClient {
     }
 
     pub fn post_tx(&self, tx: String) -> bitcoincore_rpc::Result<bitcoin::Txid> {
+        self.client.send_raw_transaction(tx)
+    }
+
+    pub fn check_and_post_tx(&self, tx: String) -> bitcoincore_rpc::Result<bitcoin::Txid> {
+        // 1. check if tx can be post
+        let check_mempool_accept = self
+            .client
+            .test_mempool_accept(&[tx.clone()])?
+            .first()
+            .unwrap();
+        if !check_mempool_accept.allowed {
+            return Err(Error::ReturnedError(format!(
+                "test_mempool_accept isn't allowed, error: {:?}",
+                check_mempool_accept.reject_reason.clone()
+            )));
+        }
+
+        // 2. check if tx has been post
+        let txid = check_mempool_accept.txid;
+        let check_in_mempool = self.client.get_transaction(&txid, None)?;
+        if !check_in_mempool.details {
+            return Ok(txid);
+        }
+
+        // 3. post tx
         self.client.send_raw_transaction(tx)
     }
 
