@@ -22,12 +22,17 @@ impl BitcoinRpcClient {
     }
 
     pub fn check_and_post_tx(&self, tx: String) -> bitcoincore_rpc::Result<bitcoin::Txid> {
-        // 1. check if tx can be post
+        // check if tx can be post,
+        //  if the tx has been posted, it won't be allowed.
+        //  or the tx is illegal
         let check_mempool_accept = self
             .client
             .test_mempool_accept(&[tx.clone()])?
             .first()
-            .unwrap();
+            .ok_or(Error::ReturnedError(format!(
+                "Failed to invoke the test_mempool_accept"
+            )))?
+            .to_owned();
         if !check_mempool_accept.allowed {
             return Err(Error::ReturnedError(format!(
                 "test_mempool_accept isn't allowed, error: {:?}",
@@ -35,14 +40,7 @@ impl BitcoinRpcClient {
             )));
         }
 
-        // 2. check if tx has been post
-        let txid = check_mempool_accept.txid;
-        let check_in_mempool = self.client.get_transaction(&txid, None)?;
-        if !check_in_mempool.details {
-            return Ok(txid);
-        }
-
-        // 3. post tx
+        // post tx
         self.client.send_raw_transaction(tx)
     }
 
