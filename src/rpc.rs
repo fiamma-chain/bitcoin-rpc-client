@@ -14,7 +14,8 @@ pub struct BitcoinRpcClient {
 
 impl BitcoinRpcClient {
     pub fn new(url: &str, user: &str, password: &str) -> bitcoincore_rpc::Result<Self> {
-        let client = Client::new_with_minreq(url, Auth::UserPass(user.to_string(), password.to_string()))?;
+        let client =
+            Client::new_with_minreq(url, Auth::UserPass(user.to_string(), password.to_string()))?;
         Ok(Self { client })
     }
 
@@ -35,10 +36,15 @@ impl BitcoinRpcClient {
             )))?
             .to_owned();
         if !check_mempool_accept.allowed {
-            return Err(Error::ReturnedError(format!(
+            let error_info = format!(
                 "test_mempool_accept isn't allowed, error: {:?}",
                 check_mempool_accept.reject_reason.clone()
-            )));
+            );
+            if error_info.contains("txn-already-in-mempoo") {
+                return Ok(check_mempool_accept.txid);
+            } else {
+                return Err(Error::ReturnedError(error_info));
+            }
         }
 
         // post tx
