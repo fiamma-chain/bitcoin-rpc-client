@@ -52,7 +52,7 @@ impl BitcoinRpcClient {
     pub fn check_and_post_tx(&self, tx: String) -> bitcoincore_rpc::Result<bitcoin::Txid> {
         self.check_tx(tx.clone())?;
         // post tx
-        self.client.send_raw_transaction(tx)
+        self.post_tx(tx)
     }
 
     pub fn get_tx(&self, tx_id: bitcoin::Txid) -> bitcoincore_rpc::Result<bitcoin::Transaction> {
