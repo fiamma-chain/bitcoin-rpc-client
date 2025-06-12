@@ -42,7 +42,11 @@ impl BitcoinRpcClient {
                 "test_mempool_accept isn't allowed, error: {:?}",
                 check_mempool_accept.reject_reason.clone()
             );
-            if error_info.contains("txn-already-in-mempoo") {
+            // txn-already-known: if inputs utxo missing because we already have the tx
+            // txn-already-in-mempool: exact transaction already exists in the mempool.
+            if error_info.contains("txn-already-in-mempool")
+                || error_info.contains("txn-already-known")
+            {
                 Ok(check_mempool_accept.txid)
             } else {
                 Err(Error::ReturnedError(error_info))
