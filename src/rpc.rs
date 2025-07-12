@@ -46,6 +46,7 @@ impl BitcoinRpcClient {
             // txn-already-in-mempool: exact transaction already exists in the mempool.
             if error_info.contains("txn-already-in-mempool")
                 || error_info.contains("txn-already-known")
+                || error_info.contains("Transaction outputs already in utxo set")
             {
                 Ok(check_mempool_accept.txid)
             } else {
