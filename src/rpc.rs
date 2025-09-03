@@ -27,8 +27,7 @@ impl BitcoinRpcClient {
         // check if tx can be post,
         //  if the tx has been posted, it won't be allowed.
         //  or the tx is illegal
-        let response = self.client.test_mempool_accept(&[tx.clone()]);
-        match response {
+        match self.client.test_mempool_accept(&[tx.clone()]) {
             Ok(response) => {
                 let check_mempool_accept = response
                     .first()
