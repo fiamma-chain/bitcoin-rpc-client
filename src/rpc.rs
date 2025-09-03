@@ -27,33 +27,48 @@ impl BitcoinRpcClient {
         // check if tx can be post,
         //  if the tx has been posted, it won't be allowed.
         //  or the tx is illegal
-        let check_mempool_accept = self
-            .client
-            .test_mempool_accept(&[tx.clone()])?
-            .first()
-            .ok_or(Error::ReturnedError(format!(
-                "Failed to invoke the test_mempool_accept"
-            )))?
-            .to_owned();
-        if check_mempool_accept.allowed {
-            Ok(check_mempool_accept.txid)
-        } else {
-            let error_info = format!(
-                "test_mempool_accept isn't allowed, error: {:?}",
-                check_mempool_accept.reject_reason.clone()
-            );
-            // txn-already-known: if inputs utxo missing because we already have the tx
-            // txn-already-in-mempool: exact transaction already exists in the mempool.
-            if error_info.contains("txn-already-in-mempool")
-                || error_info.contains("txn-already-known")
-                || error_info.contains("Transaction outputs already in utxo set")
-            {
-                Ok(check_mempool_accept.txid)
-            } else {
+        match self.client.test_mempool_accept(&[tx.clone()]) {
+            Ok(response) => {
+                let check_mempool_accept = response
+                    .first()
+                    .ok_or({
+                        let error_info = format!("test_mempool_accept return empty, tx: {}", tx,);
+                        log::error!("{error_info}",);
+
+                        Error::ReturnedError(error_info)
+                    })?
+                    .to_owned();
+                if check_mempool_accept.allowed {
+                    Ok(check_mempool_accept.txid)
+                } else {
+                    let error_info = format!(
+                        "test_mempool_accept isn't allowed, error: {:?}",
+                        check_mempool_accept.reject_reason.clone()
+                    );
+                    // txn-already-known: if inputs utxo missing because we already have the tx
+                    // txn-already-in-mempool: exact transaction already exists in the mempool.
+                    if error_info.contains("txn-already-in-mempool")
+                        || error_info.contains("txn-already-known")
+                        || error_info.contains("Transaction outputs already in utxo set")
+                    {
+                        Ok(check_mempool_accept.txid)
+                    } else {
+                        log::error!("{}", error_info);
+                        Err(Error::ReturnedError(error_info))
+                    }
+                }
+            }
+            Err(err) => {
+                let error_info = format!(
+                    "test_mempool_accept invoke failed, tx:{tx}, error: {:?}",
+                    err
+                );
+                log::error!("{}", error_info);
                 Err(Error::ReturnedError(error_info))
             }
         }
     }
+
     pub fn check_and_post_tx(&self, tx: String) -> bitcoincore_rpc::Result<bitcoin::Txid> {
         self.check_tx(tx.clone())?;
         // post tx
